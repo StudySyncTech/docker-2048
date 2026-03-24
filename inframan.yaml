@@ -1,0 +1,85 @@
+version: v1
+
+# ────────────────────────────────────────────────────────
+# 1. BASE CONFIGURATION (Shared across all environments)
+# ────────────────────────────────────────────────────────
+service:
+  port: 80                  # Nginx listens on port 80
+  scaling:
+    type: concurrency
+    target: 100
+
+build:
+  method: docker
+  dockerfile: ./Dockerfile
+
+env:
+  # Base environment variables
+  APP_NAME: "docker-2048"
+
+# ────────────────────────────────────────────────────────
+# 2. ENVIRONMENT OVERRIDES
+# ────────────────────────────────────────────────────────
+environments:
+  
+  # --- DEBUG ENVIRONMENT ---
+  debug:
+    service:
+      scaling:
+        min_replicas: 0     # Scale to zero to save costs
+        max_replicas: 1
+        
+    env:
+      FRAMEWORK_ENV: "debug"
+      
+    pre_build:
+      - name: fast-js-check
+        image: node:20-alpine
+        commands:
+          - echo "Running fast JS syntax check..."
+          - node --check 2048/js/application.js
+          
+    pre_deploy:
+      - name: verify-nginx-config
+        # Uses the newly built Nginx image automatically
+        commands:          
+          - nginx -t
+          
+    post_deploy: []         # explicitly skip post-deploy notifications for debug
+
+  # --- PROD ENVIRONMENT ---
+  prod:
+    service:
+      scaling:
+        min_replicas: 2     # Highly available
+        max_replicas: 10
+        
+    env:
+      FRAMEWORK_ENV: "production"
+      
+    pre_build:
+      - name: strict-js-check
+        image: node:20-alpine
+        timeout: 60
+        commands:
+          - echo "Running strict JS syntax check on all core files..."
+          - node --check 2048/js/application.js
+          - node --check 2048/js/game_manager.js
+          - node --check 2048/js/grid.js
+          
+    pre_deploy:
+      - name: verify-nginx-config
+        commands:
+          - nginx -t
+      - name: verify-html-assets
+        commands:
+          # Verify that the Dockerfile actually copied the assets correctly
+          - cat /usr/share/nginx/html/index.html | grep "2048"
+          
+    post_deploy:
+      - name: simulate-slack-alert
+        image: curlimages/curl:latest
+        timeout: 30
+        commands:
+          # We just echo here to simulate the webhook since we don't have envGroups loaded
+          - echo "Simulation: curl -X POST -d '{\"text\":\"2048 Prod Live!\"}' https://hooks.slack.com/..."
