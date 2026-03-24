@@ -76,10 +76,3 @@ environments:
           # Verify that the Dockerfile actually copied the assets correctly
           - cat /usr/share/nginx/html/index.html | grep "2048"
           
-    post_deploy:
-      - name: simulate-slack-alert
-        image: curlimages/curl:latest
-        timeout: 30
-        commands:
-          # We just echo here to simulate the webhook since we don't have envGroups loaded
-          - echo "Simulation: curl -X POST -d '{\"text\":\"2048 Prod Live!\"}' https://hooks.slack.com/..."
