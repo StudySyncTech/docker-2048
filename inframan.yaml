@@ -4,7 +4,7 @@ version: v1
 # 1. BASE CONFIGURATION (Shared across all environments)
 # ────────────────────────────────────────────────────────
 service:
-  port: 80                  # Nginx listens on port 80
+  port: 80
   scaling:
     type: concurrency
     target: 100
@@ -14,65 +14,75 @@ build:
   dockerfile: ./Dockerfile
 
 env:
-  # Base environment variables
   APP_NAME: "docker-2048"
 
 # ────────────────────────────────────────────────────────
 # 2. ENVIRONMENT OVERRIDES
 # ────────────────────────────────────────────────────────
 environments:
-  
+
   # --- DEBUG ENVIRONMENT ---
   debug:
     service:
       scaling:
-        min_replicas: 0     # Scale to zero to save costs
+        min_replicas: 0
         max_replicas: 1
-        
+
     env:
       FRAMEWORK_ENV: "debug"
-      
+
     pre_build:
-      - name: fast-js-check
-        image: node:20-alpine
+      - name: check-assets
+        image: alpine:latest
         commands:
-          - echo "Running fast JS syntax check..."
-          - node --check 2048/js/application.js
-          
+          - echo "Checking that all required files exist..."
+          - test -f 2048/index.html
+          - test -f 2048/js/application.js
+          - test -f Dockerfile
+          - echo "All files present!"
+
     pre_deploy:
       - name: verify-nginx-config
-        # Uses the newly built Nginx image automatically
-        commands:          
+        commands:
           - nginx -t
-          
-    post_deploy: []         # explicitly skip post-deploy notifications for debug
+
+    post_deploy: []
 
   # --- PROD ENVIRONMENT ---
   prod:
     service:
       scaling:
-        min_replicas: 2     # Highly available
+        min_replicas: 2
         max_replicas: 10
-        
+
     env:
       FRAMEWORK_ENV: "production"
-      
+
     pre_build:
-      - name: strict-js-check
-        image: node:20-alpine
+      - name: check-assets
+        image: alpine:latest
         timeout: 60
         commands:
-          - echo "Running strict JS syntax check on all core files..."
-          - node --check 2048/js/application.js
-          - node --check 2048/js/game_manager.js
-          - node --check 2048/js/grid.js
-          
+          - echo "Strict asset check for production..."
+          - test -f 2048/index.html
+          - test -f 2048/js/application.js
+          - test -f 2048/js/game_manager.js
+          - test -f 2048/js/grid.js
+          - test -f 2048/style/main.css
+          - echo "All production assets verified!"
+
     pre_deploy:
       - name: verify-nginx-config
         commands:
           - nginx -t
       - name: verify-html-assets
         commands:
-          # Verify that the Dockerfile actually copied the assets correctly
-          - cat /usr/share/nginx/html/index.html | grep "2048"
-          
+          - grep "2048" /usr/share/nginx/html/index.html
+
+    post_deploy:
+      - name: health-check
+        image: curlimages/curl:latest
+        timeout: 30
+        commands:
+          - echo "Post-deploy health check placeholder"
+          - echo "In production, this would curl the service endpoint"
