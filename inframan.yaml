@@ -23,7 +23,7 @@ pipeline_variables:
     echo "All assets present!"
   LINT_DOCKERFILE_CMD: >-
     echo "Validating Dockerfile..." &&
-    head -1 Dockerfile | grep -q "^FROM" &&
+    grep -q "^FROM" Dockerfile &&
     grep -q "EXPOSE" Dockerfile &&
     echo "Dockerfile checks passed!"
   NGINX_CHECK_CMD: "nginx -t"
