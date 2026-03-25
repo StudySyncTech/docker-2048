@@ -1,4 +1,5 @@
 version: v1
+
 service:
   port: 80
   scaling:
