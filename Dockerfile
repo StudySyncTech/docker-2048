@@ -2,7 +2,7 @@
 FROM nginx:alpine
 
 # Copy the 2048 gameff
-COPY 2048 /usr/share/nginx/html
+COPY 2048 /usr/share/nginx/html    
       
 # Read build secrets and write decoded values into a visible HTML file
 # This is for TESTING ONLY — never do this in production!  
