@@ -27,7 +27,7 @@ Base on nginx
     EXPOSE 80
 
     CMD ["nginx", "-g", "daemon off;"]
-
+  
 # run the docker container with your own build
 
     git clone https://github.com/alexwhen/docker-2048.git
